@@ -1,0 +1,214 @@
+// Matthew Klose Poop Counter - Prisma Schema
+// The world's most advanced poop tracking database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // User preferences
+  timezone    String   @default("UTC")
+  units       String   @default("metric") // metric or imperial
+  privacy     String   @default("private") // private, friends, public
+  
+  // Relationships
+  pets        Pet[]
+  poopEntries PoopEntry[]
+  analytics   UserAnalytics[]
+  achievements UserAchievement[]
+  
+  @@map("users")
+}
+
+model Pet {
+  id          String   @id @default(cuid())
+  name        String
+  species     String   @default("dog") // dog, cat, human, other
+  breed       String?
+  age         Int?
+  weight      Float?
+  gender      String?
+  avatar      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Pet-specific data
+  microchipId String?
+  vetInfo     String?
+  
+  // Relationships
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String
+  poopEntries PoopEntry[]
+  analytics   PetAnalytics[]
+  
+  @@map("pets")
+}
+
+model PoopEntry {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  
+  // Core poop specifications
+  consistency Int      // 1-7 Bristol Stool Scale
+  size        String   // small, medium, large, xl, monster
+  color       String   // brown, light-brown, dark-brown, green, yellow, etc.
+  smell       Int      // 1-10 intensity scale
+  effort      Int      // 1-10 effort scale
+  satisfaction Int     // 1-10 satisfaction scale
+  
+  // Technical specifications
+  length      Float?   // cm
+  width       Float?   // cm
+  weight      Float?   // grams
+  temperature Float?   // celsius
+  ph          Float?   // pH level
+  
+  // Context data
+  location    String?
+  weather     String?
+  mood        String?
+  preActivity String?  // what were they doing before
+  postActivity String? // what did they do after
+  
+  // Health indicators
+  blood       Boolean  @default(false)
+  mucus       Boolean  @default(false)
+  undigested  Boolean  @default(false)
+  pain        Boolean  @default(false)
+  urgency     Int      @default(5) // 1-10 urgency scale
+  
+  // Cleanup data
+  wipeCount   Int?
+  cleanupTime Int?     // seconds
+  
+  // Media
+  photos      String[] // array of photo URLs
+  notes       String?
+  
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  pet         Pet?     @relation(fields: [petId], references: [id], onDelete: Cascade)
+  petId       String?
+  
+  @@map("poop_entries")
+}
+
+model PoopType {
+  id          String @id @default(cuid())
+  name        String @unique // "The Classic", "Soft Serve", etc.
+  description String
+  consistency Int[]  // array of Bristol scale values
+  
+  // Tech specs
+  features    String[] // array of features
+  accessories String[] // compatible accessories
+  colors      String[] // available colors
+  
+  // Apple-style product data
+  heroImage   String?
+  gallery     String[] // product photos
+  techSpecs   Json     // detailed specifications
+  
+  @@map("poop_types")
+}
+
+model UserAnalytics {
+  id              String   @id @default(cuid())
+  date            DateTime @unique
+  
+  // Daily metrics
+  totalPoops      Int      @default(0)
+  avgConsistency  Float?
+  avgSize         Float?
+  avgSatisfaction Float?
+  avgEffort       Float?
+  
+  // Health indicators
+  bloodIncidents  Int      @default(0)
+  painIncidents   Int      @default(0)
+  
+  // Relationships
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  
+  @@map("user_analytics")
+}
+
+model PetAnalytics {
+  id              String   @id @default(cuid())
+  date            DateTime @unique
+  
+  // Daily metrics
+  totalPoops      Int      @default(0)
+  avgConsistency  Float?
+  avgSize         Float?
+  
+  // Health indicators
+  bloodIncidents  Int      @default(0)
+  
+  // Relationships
+  pet             Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+  petId           String
+  
+  @@map("pet_analytics")
+}
+
+model Comparison {
+  id          String   @id @default(cuid())
+  type        String   // "user_vs_pet", "pet_vs_pet", "user_vs_user"
+  
+  // Comparison data
+  subject1Id  String
+  subject2Id  String
+  metric      String   // "frequency", "consistency", "size", etc.
+  timeframe   String   // "daily", "weekly", "monthly"
+  result      Json     // comparison results
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("comparisons")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  category    String   // "frequency", "consistency", "health", etc.
+  
+  // Requirements
+  criteria    Json     // achievement criteria
+  
+  // Relationships
+  users       UserAchievement[]
+  
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  unlockedAt    DateTime    @default(now())
+  
+  // Relationships
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  achievementId String
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
